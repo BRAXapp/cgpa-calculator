@@ -1,4 +1,3 @@
-<script>
 const gradePolicies = {
   '1': [
     { min: 97, grade: 'A+', gpa: 4.0 },
@@ -225,4 +224,42 @@ function reverseMapGrade(gpa) {
   );
   return closest.min;
 }
-</script>
+
+function updateSlider() {
+  const slider = document.getElementById('slider');
+  const checked = document.querySelector('input[name="grading"]:checked').value;
+  switch (checked) {
+    case '1':
+      slider.style.left = '0%';
+      break;
+    case '2':
+      slider.style.left = '33.33%';
+      break;
+    case 'custom':
+      slider.style.left = '66.66%';
+      break;
+  }
+}
+
+// Call on every grading policy change
+document.querySelectorAll('input[name="grading"]').forEach(input => {
+  input.addEventListener('change', () => {
+    updateSlider();
+    saveState(); // persist selection
+  });
+});
+
+// Restore slider on load
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = localStorage.getItem('cgpaCalculatorState');
+  if (saved) {
+    const state = JSON.parse(saved);
+    if (state.policy) {
+      // If custom policy saved, select "custom", else match BRACU/MUN
+      const policyKey = state.policy === gradePolicies['2'] ? '2' :
+                        state.policy === gradePolicies['1'] ? '1' : 'custom';
+      document.getElementById(policyKey).checked = true;
+    }
+  }
+  updateSlider();
+});
