@@ -64,3 +64,10 @@ button {
 button:hover {
   background-color: #1565c0;
 }
+
+#slider {
+  background-color: #3b82f6; /* Tailwind blue-600 */
+}
+input[name="grading"]:checked ~ #slider {
+  /* handled JS */
+}
