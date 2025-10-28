@@ -1,3 +1,4 @@
+<script>
 const gradePolicies = {
   '1': [
     { min: 97, grade: 'A+', gpa: 4.0 },
@@ -25,6 +26,52 @@ const gradePolicies = {
 
 let currentPolicy = gradePolicies['1'];
 
+/////////////////////////////
+// Persistent Storage
+/////////////////////////////
+function saveState() {
+  const state = {
+    policy: currentPolicy,
+    semesters: Array.from(document.querySelectorAll('.semester')).map(sem => ({
+      title: sem.querySelector('.semester-title').value,
+      courses: Array.from(sem.querySelectorAll('.course-row')).map(course => ({
+        id: course.children[0].value,
+        name: course.children[1].value,
+        gpa: course.children[2].value,
+        mark: course.children[3].value
+      }))
+    }))
+  };
+  localStorage.setItem('cgpaCalculatorState', JSON.stringify(state));
+}
+
+function loadState() {
+  const saved = localStorage.getItem('cgpaCalculatorState');
+  if (!saved) return;
+
+  const state = JSON.parse(saved);
+  
+  // Restore grading policy
+  currentPolicy = state.policy;
+  if (state.policy.some(p => p.grade && p.gpa)) {
+    document.getElementById('custom-boundary-text').value = state.policy
+      .map(p => `${p.min}:${p.grade}:${p.gpa}`)
+      .join('\n');
+    document.getElementById('custom-boundaries').style.display = 'block';
+  }
+
+  // Restore semesters and courses
+  state.semesters.forEach(sem => addSemester(sem));
+
+  calculateCGPA();
+}
+
+// Load state on DOM ready
+window.addEventListener('DOMContentLoaded', loadState);
+
+/////////////////////////////
+// Grading System Switcher
+/////////////////////////////
 function setGradingPolicy(val) {
   if (val === 'custom') {
     document.getElementById('custom-boundaries').style.display = 'block';
@@ -33,6 +80,7 @@ function setGradingPolicy(val) {
     document.getElementById('custom-boundaries').style.display = 'none';
     calculateCGPA();
   }
+  saveState();
 }
 
 function applyCustomBoundaries() {
@@ -42,24 +90,25 @@ function applyCustomBoundaries() {
     return { min: parseFloat(min), grade, gpa: parseFloat(gpa) };
   }).sort((a, b) => b.min - a.min);
   calculateCGPA();
+  saveState();
 }
 
+/////////////////////////////
+// Semester & Course Management
+/////////////////////////////
 function addSemester(data = {}) {
   const container = document.createElement('div');
   container.className = 'semester';
   container.innerHTML = `
     <input placeholder="Semester Name" class="semester-title" value="${data.title || ''}" />
     <div class="courses"></div>
-    <button
-  onclick="addCourse(this)"
-  class="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition-transform duration-200 hover:scale-105 shadow-md"
->
-  + Add Course
-</button>
+    <button onclick="addCourse(this)" class="mt-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-semibold transition-transform duration-200 hover:scale-105 shadow-md">+ Add Course</button>
     <div class="semester-gpa">GPA: 0.00</div>
   `;
   document.getElementById('semesters').appendChild(container);
   (data.courses || []).forEach(c => addCourse(container.querySelector('button'), c));
+
+  saveState();
 }
 
 function addCourse(button, courseData = {}) {
@@ -74,16 +123,23 @@ function addCourse(button, courseData = {}) {
   `;
   coursesDiv.appendChild(div);
 
-  // Optional: fade-in animation
   div.classList.add('opacity-0');
   requestAnimationFrame(() => {
     div.classList.add('transition-opacity', 'duration-500', 'opacity-100');
   });
 
   calculateCGPA();
+  saveState();
 }
 
+// Save state when any semester input changes
+document.addEventListener('input', e => {
+  if (e.target.closest('.semester')) saveState();
+});
 
+/////////////////////////////
+// GPA/Mark Sync & CGPA Calculation
+/////////////////////////////
 function syncFromMark(input) {
   const mark = parseFloat(input.value);
   const gpaInput = input.previousElementSibling;
@@ -92,6 +148,7 @@ function syncFromMark(input) {
     if (entry) gpaInput.value = entry.gpa;
   }
   calculateCGPA();
+  saveState();
 }
 
 function syncFromGPA(input) {
@@ -102,6 +159,7 @@ function syncFromGPA(input) {
     if (entry) markInput.value = entry.min;
   }
   calculateCGPA();
+  saveState();
 }
 
 function calculateCGPA() {
@@ -124,6 +182,9 @@ function calculateCGPA() {
   document.getElementById('cgpa-display').textContent = `CGPA: ${cgpa}`;
 }
 
+/////////////////////////////
+// PDF Parsing (existing)
+/////////////////////////////
 async function handlePDF(event) {
   const file = event.target.files[0];
   const arrayBuffer = await file.arrayBuffer();
@@ -164,3 +225,4 @@ function reverseMapGrade(gpa) {
   );
   return closest.min;
 }
+</script>
